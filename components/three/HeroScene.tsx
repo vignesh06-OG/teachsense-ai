@@ -58,6 +58,20 @@ function OrbitingNode({ position, color }: { position: [number, number, number];
 }
 
 export default function HeroScene() {
+  const [mounted, setMounted] = React.useState(false);
+
+  React.useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!mounted) {
+    return (
+      <div className="w-full h-full min-h-[420px] md:min-h-[560px] flex items-center justify-center">
+        <div className="w-12 h-12 rounded-full border-2 border-indigo-500/20 border-t-indigo-500 animate-spin" />
+      </div>
+    );
+  }
+
   return (
     <div className="w-full h-full min-h-[420px] md:min-h-[560px] relative pointer-events-auto">
       <Canvas

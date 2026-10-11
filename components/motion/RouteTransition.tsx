@@ -25,10 +25,6 @@ export function RouteTransition({ children }: RouteTransitionProps) {
       animate="animate"
       exit="exit"
       className="w-full flex-1"
-      style={{
-        transformPerspective: 1000,
-        backfaceVisibility: "hidden",
-      }}
     >
       {children}
     </motion.div>

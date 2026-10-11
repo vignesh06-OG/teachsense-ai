@@ -28,8 +28,7 @@ import {
   CountUp,
   SectionReveal,
 } from "@/components/motion/AnimatedText";
-import { SenseiCompanion } from "@/components/mascot/SenseiCompanion";
-import { WorkflowProvider, useWorkflow } from "@/lib/context/WorkflowContext";
+import { useWorkflow } from "@/lib/context/WorkflowContext";
 
 const HeroScene = dynamic(() => import("@/components/three/HeroScene"), {
   ssr: false,
@@ -203,17 +202,65 @@ function MarketingContent() {
 
         {/* 3D Knowledge Lattice Hero Visual */}
         <div className="w-full lg:w-1/2 relative">
-          <div className="absolute inset-0 bg-gradient-to-tr from-indigo-500/10 via-purple-500/10 to-cyan-500/10 rounded-3xl blur-2xl pointer-events-none" />
-          <div className="relative surface-elevation-2 rounded-3xl overflow-hidden border border-slate-800/80 shadow-2xl">
-            <HeroScene />
-            <div className="absolute bottom-4 left-4 right-4 p-3 rounded-2xl bg-slate-950/85 backdrop-blur-md border border-slate-800/80 flex items-center justify-between text-xs">
+          {/* Subtle Ambient Glow Aura */}
+          <div className="absolute -inset-1 bg-gradient-to-tr from-indigo-500/20 via-purple-500/15 to-cyan-500/20 rounded-3xl blur-2xl pointer-events-none" />
+
+          {/* Main Terminal Frame */}
+          <div className="relative surface-elevation-2 rounded-3xl overflow-hidden border border-slate-800/90 shadow-2xl bg-slate-950/70 backdrop-blur-sm">
+            {/* Top Terminal HUD Bar */}
+            <div className="px-4 py-2.5 bg-slate-900/80 border-b border-slate-800/80 flex items-center justify-between text-xs backdrop-blur-md">
               <div className="flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                <span className="text-slate-300 font-mono text-[11px]">
-                  Interactive Curricular Knowledge Lattice
+                <span className="w-2 h-2 rounded-full bg-indigo-400 animate-pulse" />
+                <span className="font-mono text-[11px] font-semibold text-slate-300">
+                  COGNITIVE TOPOLOGY ENGINE • CCSS 8.EE.C.7
                 </span>
               </div>
-              <span className="text-indigo-400 font-mono text-[10px]">WebGL / R3F</span>
+              <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 font-mono text-[10px]">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
+                <span>96.4% Precision</span>
+              </div>
+            </div>
+
+            {/* Floating Live Telemetry Chips (Top) */}
+            <div className="absolute top-12 left-4 right-4 flex items-center justify-between pointer-events-none z-10">
+              <div className="px-2.5 py-1 rounded-lg bg-slate-950/85 border border-slate-800 text-[10px] font-mono text-slate-400 backdrop-blur-md hidden sm:flex items-center gap-1.5 shadow-lg">
+                <span className="text-indigo-400 font-bold">Vector Latency:</span> &lt;12ms • 5 Graph Nodes
+              </div>
+              <div className="px-2.5 py-1 rounded-lg bg-slate-950/85 border border-slate-800 text-[10px] font-mono text-slate-400 backdrop-blur-md hidden sm:flex items-center gap-1.5 shadow-lg">
+                <span className="text-cyan-400 font-bold">Silhouette:</span> 0.88 (Optimal Cluster)
+              </div>
+            </div>
+
+            {/* 3D Scene Viewport */}
+            <div className="h-[380px] sm:h-[450px] lg:h-[480px] w-full relative">
+              <HeroScene />
+            </div>
+
+            {/* Bottom Interactive Legend & Status Bar */}
+            <div className="p-3 bg-slate-950/90 border-t border-slate-800/80 space-y-2 backdrop-blur-md">
+              <div className="flex flex-wrap items-center justify-between gap-2 text-[10px] font-mono">
+                <div className="flex flex-wrap items-center gap-3">
+                  <div className="flex items-center gap-1.5">
+                    <span className="w-2 h-2 rounded-full bg-emerald-400" />
+                    <span className="text-slate-300">Mastery (x = 5)</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="w-2 h-2 rounded-full bg-amber-400" />
+                    <span className="text-slate-300">Sign-Flip (x = 10)</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="w-2 h-2 rounded-full bg-pink-400" />
+                    <span className="text-slate-300">Fraction Fallacy</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="w-2 h-2 rounded-full bg-cyan-400" />
+                    <span className="text-slate-300">Distribution Drop</span>
+                  </div>
+                </div>
+                <span className="text-indigo-400 font-bold hidden md:inline">
+                  Hover nodes to inspect
+                </span>
+              </div>
             </div>
           </div>
         </div>
@@ -391,16 +438,10 @@ function MarketingContent() {
         </div>
       </footer>
 
-      {/* Sensei Mascot Companion */}
-      <SenseiCompanion />
     </div>
   );
 }
 
 export default function MarketingPage() {
-  return (
-    <WorkflowProvider>
-      <MarketingContent />
-    </WorkflowProvider>
-  );
+  return <MarketingContent />;
 }

@@ -29,6 +29,7 @@ export function SenseiCompanion() {
     mascotTargetId,
     setMascotState,
     dismissMascot,
+    triggerMascotThinking,
   } = useWorkflow();
 
   const [mousePos, setMousePos] = useState<Coordinates>({ x: 0, y: 0 });
@@ -39,6 +40,12 @@ export function SenseiCompanion() {
   const [targetCoords, setTargetCoords] = useState<Coordinates | null>(null);
 
   const mascotRef = useRef<HTMLDivElement>(null);
+
+  const handleMascotClick = () => {
+    if (!mascotMessage) {
+      triggerMascotThinking("Sensei here! Ready to diagnose and guide your classroom intervention.");
+    }
+  };
 
   // 1. Accessibility & Local Storage Persistence
   useEffect(() => {
@@ -172,7 +179,13 @@ export function SenseiCompanion() {
   // If disabled, show discreet floating restoration button
   if (isDisabled) {
     return (
-      <div className="fixed bottom-20 right-4 sm:bottom-6 sm:right-6 z-50 pointer-events-auto">
+      <div
+        className="fixed z-50 pointer-events-auto"
+        style={{
+          right: "max(20px, env(safe-area-inset-right, 20px))",
+          bottom: "max(20px, env(safe-area-inset-bottom, 20px))",
+        }}
+      >
         <button
           onClick={toggleDisable}
           title="Enable Sensei AI Pedagogical Copilot"
@@ -224,12 +237,14 @@ export function SenseiCompanion() {
         animate={
           targetCoords && !reducedMotion
             ? { left: targetCoords.x, top: targetCoords.y, bottom: "auto", right: "auto" }
-            : { bottom: 24, right: 24, left: "auto", top: "auto" }
+            : { left: "auto", top: "auto" }
         }
         transition={SPRING_CONFIGS.mascot}
         className="fixed z-50 flex flex-col items-end select-none pointer-events-none"
         style={{
           position: "fixed",
+          right: targetCoords && !reducedMotion ? undefined : "max(20px, env(safe-area-inset-right, 20px))",
+          bottom: targetCoords && !reducedMotion ? undefined : "max(20px, env(safe-area-inset-bottom, 20px))",
         }}
       >
         {/* Contextual Speech Bubble */}
@@ -291,6 +306,7 @@ export function SenseiCompanion() {
         {/* Mascot Character Rig Container */}
         <div className="relative group pointer-events-auto">
           <motion.div
+            onClick={handleMascotClick}
             animate={
               !reducedMotion
                 ? {

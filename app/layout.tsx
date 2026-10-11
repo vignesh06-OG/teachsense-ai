@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Plus_Jakarta_Sans, JetBrains_Mono } from "next/font/google";
 import { PointerSpotlight } from "@/components/motion/PointerSpotlight";
+import { AppProviders } from "@/components/providers/AppProviders";
 import "./globals.css";
 
 const plusJakartaSans = Plus_Jakarta_Sans({
@@ -46,7 +47,7 @@ export default function RootLayout({
     <html lang="en" className={`dark ${plusJakartaSans.variable} ${jetbrainsMono.variable}`}>
       <body className="min-h-screen bg-slate-950 text-slate-100 font-sans antialiased selection:bg-indigo-500 selection:text-white relative">
         <PointerSpotlight />
-        {children}
+        <AppProviders>{children}</AppProviders>
       </body>
     </html>
   );

@@ -1,8 +1,8 @@
 "use client";
 
-import React, { useRef, useState } from "react";
+import React, { useRef, useState, useEffect } from "react";
 import { Canvas, useFrame } from "@react-three/fiber";
-import { Float, Sphere, Text, Line } from "@react-three/drei";
+import { Float, Html } from "@react-three/drei";
 import * as THREE from "three";
 
 interface NodeData {
@@ -52,6 +52,11 @@ function KnowledgeLattice() {
           />
         {/* @ts-ignore */}
         </mesh>
+        <Html position={[0, -0.7, 0]} center className="pointer-events-none select-none">
+          <div className="px-2 py-0.5 rounded bg-indigo-950/80 border border-indigo-500/40 text-[10px] font-mono text-indigo-200 whitespace-nowrap shadow-lg">
+            Core Target: Linear Equations
+          </div>
+        </Html>
       </Float>
 
       {/* Orbiting Conceptual Branches */}
@@ -79,42 +84,74 @@ function KnowledgeLattice() {
             {/* @ts-ignore */}
             </mesh>
 
-            {/* 3D Label */}
-            <Text
-              position={[0, -0.6, 0]}
-              fontSize={0.2}
-              color="#e2e8f0"
-              anchorX="center"
-              anchorY="middle"
-            >
-              {node.label}
-            </Text>
+            {/* Offline-safe DOM HTML Label (zero troika font network fetch) */}
+            <Html position={[0, -0.6, 0]} center className="pointer-events-none select-none">
+              <div
+                className={`px-2 py-0.5 rounded text-[10px] font-mono whitespace-nowrap border transition-all ${
+                  hoveredNode === node.label
+                    ? "bg-slate-900 text-white border-white/60 scale-105 shadow-lg"
+                    : "bg-slate-950/70 text-slate-300 border-slate-800"
+                }`}
+              >
+                {node.label}
+              </div>
+            </Html>
           </group>
         </Float>
-      ))}
-
-      {/* Neural Synapse Connections from Core to Branches */}
-      {NODES.slice(1).map((node, idx) => (
-        <Line
-          key={idx}
-          points={[
-            [0, 0.2, 0],
-            node.position,
-          ]}
-          color={node.color}
-          lineWidth={1.5}
-          transparent
-          opacity={0.35}
-        />
       ))}
     </group>
   );
 }
 
-export default function HeroScene() {
-  const [mounted, setMounted] = React.useState(false);
+// 2D SVG Offline Fallback
+function KnowledgeLatticeFallback() {
+  return (
+    <div className="w-full h-full min-h-[440px] flex flex-col items-center justify-center relative p-6">
+      <div className="w-64 h-64 rounded-full border border-indigo-500/20 relative flex items-center justify-center animate-pulse">
+        <div className="w-24 h-24 rounded-full bg-indigo-600/30 border border-indigo-400 flex items-center justify-center text-center p-2 text-xs font-bold text-white shadow-xl shadow-indigo-600/40">
+          Linear Eq Core
+        </div>
+        <div className="absolute top-2 left-6 px-2.5 py-1 rounded bg-emerald-950 border border-emerald-500/40 text-[10px] font-mono text-emerald-300">
+          Mastery (x = 5)
+        </div>
+        <div className="absolute top-4 right-4 px-2.5 py-1 rounded bg-amber-950 border border-amber-500/40 text-[10px] font-mono text-amber-300">
+          Sign-Flip Error
+        </div>
+        <div className="absolute bottom-6 left-2 px-2.5 py-1 rounded bg-pink-950 border border-pink-500/40 text-[10px] font-mono text-pink-300">
+          Fraction Fallacy
+        </div>
+        <div className="absolute bottom-4 right-4 px-2.5 py-1 rounded bg-cyan-950 border border-cyan-500/40 text-[10px] font-mono text-cyan-300">
+          Distribution Drop
+        </div>
+      </div>
+      <p className="text-xs text-slate-500 mt-4 font-mono">Curricular Misconception Lattice</p>
+    </div>
+  );
+}
 
-  React.useEffect(() => {
+class SceneErrorBoundary extends React.Component<{ children: React.ReactNode }, { hasError: boolean }> {
+  constructor(props: { children: React.ReactNode }) {
+    super(props);
+    this.state = { hasError: false };
+  }
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+  componentDidCatch(error: any) {
+    console.warn("HeroScene WebGL fallback rendered:", error);
+  }
+  render() {
+    if (this.state.hasError) {
+      return <KnowledgeLatticeFallback />;
+    }
+    return this.props.children;
+  }
+}
+
+export default function HeroScene() {
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
     setMounted(true);
   }, []);
 
@@ -128,20 +165,22 @@ export default function HeroScene() {
 
   return (
     <div className="w-full h-full min-h-[440px] md:min-h-[560px] relative pointer-events-auto">
-      <Canvas
-        camera={{ position: [0, 0, 5.5], fov: 42 }}
-        className="w-full h-full"
-        gl={{ alpha: true, antialias: true }}
-      >
-        {/* @ts-ignore */}
-        <ambientLight intensity={0.8} />
-        {/* @ts-ignore */}
-        <directionalLight position={[10, 10, 5]} intensity={1.8} color="#a5b4fc" />
-        {/* @ts-ignore */}
-        <pointLight position={[-8, -8, -4]} intensity={1.2} color="#38bdf8" />
+      <SceneErrorBoundary>
+        <Canvas
+          camera={{ position: [0, 0, 5.5], fov: 42 }}
+          className="w-full h-full"
+          gl={{ alpha: true, antialias: true, failIfMajorPerformanceCaveat: false }}
+        >
+          {/* @ts-ignore */}
+          <ambientLight intensity={0.8} />
+          {/* @ts-ignore */}
+          <directionalLight position={[10, 10, 5]} intensity={1.8} color="#a5b4fc" />
+          {/* @ts-ignore */}
+          <pointLight position={[-8, -8, -4]} intensity={1.2} color="#38bdf8" />
 
-        <KnowledgeLattice />
-      </Canvas>
+          <KnowledgeLattice />
+        </Canvas>
+      </SceneErrorBoundary>
     </div>
   );
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import Link from "next/link";
 import {
   TrendingUp,
@@ -11,41 +11,37 @@ import {
   FileCheck,
   ShieldCheck,
   ArrowUpRight,
+  Info,
+  Scale,
+  Sparkles,
+  ArrowLeft,
 } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { DeltaComparisonChart } from "@/components/charts/DeltaComparisonChart";
-import { DeltaAnalysisSummary } from "@/lib/validators/assessment-schema";
+import { useWorkflow } from "@/lib/context/WorkflowContext";
 
 export default function DeltaComparisonPage() {
-  const [summary, setSummary] = useState<DeltaAnalysisSummary | null>(null);
-  const [loading, setLoading] = useState(true);
+  const { deltaSummary, goToStage } = useWorkflow();
+  const [filterType, setFilterType] = useState<"all" | "remediated" | "partial">("all");
 
-  useEffect(() => {
-    async function fetchDelta() {
-      try {
-        const res = await fetch("/api/compare");
-        const json = await res.json();
-        if (json.success) {
-          setSummary(json.data);
-        }
-      } catch (e) {
-        console.error(e);
-      } finally {
-        setLoading(false);
-      }
-    }
-    fetchDelta();
-  }, []);
+  const summary = deltaSummary;
+
+  const filteredDeltas = summary?.cohortDeltas.filter((d) => {
+    if (filterType === "all") return true;
+    if (filterType === "remediated") return d.status === "remediated";
+    if (filterType === "partial") return d.status === "partial_progress";
+    return true;
+  });
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-8 animate-in fade-in duration-300">
       {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-800 pb-6">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-800/80 pb-6">
         <div>
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 mb-2">
-            <TrendingUp className="w-3.5 h-3.5" /> Step 5: Empirical Intervention Efficacy
+            <TrendingUp className="w-3.5 h-3.5" /> Stage 6 of 6: Empirical Intervention Efficacy
           </div>
           <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
             Before vs After Intervention Delta Analysis
@@ -56,10 +52,20 @@ export default function DeltaComparisonPage() {
         </div>
 
         <div className="flex items-center gap-3">
+          <Button
+            variant="secondary"
+            size="md"
+            onClick={() => goToStage(0)}
+            className="gap-2"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            <span>Cycle Complete: Back to Overview</span>
+          </Button>
+
           <Link href="/quality">
-            <Button variant="secondary" size="md" className="gap-2">
+            <Button variant="primary" size="md" className="gap-2 shadow-lg shadow-emerald-600/20">
               <ShieldCheck className="w-4 h-4 text-emerald-400" />
-              Evaluation Proofs (/quality) →
+              <span>Evidence Audit (/quality)</span>
             </Button>
           </Link>
         </div>
@@ -120,6 +126,20 @@ export default function DeltaComparisonPage() {
             </Card>
           </div>
 
+          {/* Statistical Caveats & Evidence Limitations Callout */}
+          <div className="p-4 rounded-2xl bg-slate-900/70 border border-slate-800 flex items-start gap-3.5 text-xs text-slate-300">
+            <Scale className="w-5 h-5 text-indigo-400 shrink-0 mt-0.5" />
+            <div className="space-y-1">
+              <div className="font-bold text-white flex items-center gap-2">
+                <span>Sample Size & Evidence Limitations Disclosure (Sample N = {summary.totalStudents})</span>
+                <Badge variant="indigo" className="text-[10px] py-0 font-mono">Academic Rigor</Badge>
+              </div>
+              <p className="text-slate-400 leading-relaxed text-[11px]">
+                These metrics are calculated over a synthetic demonstration cohort of N = {summary.totalStudents} fictional students. In accordance with statistical best practices, small sample cohorts exhibit wider confidence intervals. TeachSense AI reports observational gains and does not claim definitive single-factor causal claims without a randomized control group.
+              </p>
+            </div>
+          </div>
+
           {/* Chart Section */}
           <Card className="space-y-4">
             <CardHeader className="flex flex-row items-center justify-between">
@@ -129,7 +149,7 @@ export default function DeltaComparisonPage() {
                   Comparison of scores before and after targeted remedial worksheet intervention.
                 </CardDescription>
               </div>
-              <Badge variant="indigo">Cohort N = {summary.totalStudents}</Badge>
+              <Badge variant="indigo" className="font-mono">Cohort N = {summary.totalStudents}</Badge>
             </CardHeader>
             <CardContent>
               <DeltaComparisonChart deltas={summary.cohortDeltas} />
@@ -138,11 +158,39 @@ export default function DeltaComparisonPage() {
 
           {/* Detailed Student Roster Breakdown */}
           <Card className="space-y-4">
-            <CardHeader>
-              <CardTitle>Student Progress Ledger</CardTitle>
-              <CardDescription>
-                Granular status tracking per student showing baseline, outcome, and cognitive remediation state.
-              </CardDescription>
+            <CardHeader className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div>
+                <CardTitle>Student Progress Ledger</CardTitle>
+                <CardDescription>
+                  Granular status tracking per student showing baseline, outcome, and cognitive remediation state.
+                </CardDescription>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setFilterType("all")}
+                  className={`px-3 py-1 rounded-lg text-xs font-semibold transition ${
+                    filterType === "all" ? "bg-indigo-600 text-white" : "text-slate-400 hover:text-white"
+                  }`}
+                >
+                  All ({summary.cohortDeltas.length})
+                </button>
+                <button
+                  onClick={() => setFilterType("remediated")}
+                  className={`px-3 py-1 rounded-lg text-xs font-semibold transition ${
+                    filterType === "remediated" ? "bg-emerald-600 text-white" : "text-slate-400 hover:text-white"
+                  }`}
+                >
+                  Remediated
+                </button>
+                <button
+                  onClick={() => setFilterType("partial")}
+                  className={`px-3 py-1 rounded-lg text-xs font-semibold transition ${
+                    filterType === "partial" ? "bg-amber-600 text-white" : "text-slate-400 hover:text-white"
+                  }`}
+                >
+                  Partial Gain
+                </button>
+              </div>
             </CardHeader>
             <CardContent>
               <div className="overflow-x-auto">
@@ -159,7 +207,7 @@ export default function DeltaComparisonPage() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-800/60 font-mono text-[11px]">
-                    {summary.cohortDeltas.map((row) => (
+                    {filteredDeltas?.map((row) => (
                       <tr key={row.studentId} className="hover:bg-slate-900/40 transition">
                         <td className="px-3 py-2.5 font-sans font-bold text-white">
                           {row.studentName}

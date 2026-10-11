@@ -1,7 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
-import Link from "next/link";
+import React, { useState } from "react";
 import {
   Sparkles,
   CheckCircle2,
@@ -13,56 +12,49 @@ import {
   HelpCircle,
   ChevronRight,
   TrendingUp,
+  ArrowRight,
+  Check,
+  Lock,
 } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
-import { RemedialMaterial } from "@/lib/validators/assessment-schema";
+import { useWorkflow } from "@/lib/context/WorkflowContext";
 
 export default function RemedialMaterialsPage() {
-  const [materials, setMaterials] = useState<RemedialMaterial[]>([]);
-  const [selectedMatId, setSelectedMatId] = useState<string>("");
-  const [loading, setLoading] = useState(true);
+  const {
+    materials,
+    approveMaterial,
+    rejectMaterial,
+    pendingApprovalCount,
+    continueToNextStage,
+    triggerMascotSuccess,
+    triggerMascotError,
+  } = useWorkflow();
 
-  useEffect(() => {
-    async function loadMaterials() {
-      try {
-        const res = await fetch("/api/generate");
-        const json = await res.json();
-        if (json.success && json.data.length > 0) {
-          setMaterials(json.data);
-          setSelectedMatId(json.data[0].id);
-        }
-      } catch (e) {
-        console.error(e);
-      } finally {
-        setLoading(false);
-      }
-    }
-    loadMaterials();
-  }, []);
-
-  const handleApprove = (id: string) => {
-    setMaterials((prev) =>
-      prev.map((m) => (m.id === id ? { ...m, approvalStatus: "approved" } : m))
-    );
-  };
-
-  const handleReject = (id: string) => {
-    setMaterials((prev) =>
-      prev.map((m) => (m.id === id ? { ...m, approvalStatus: "rejected" } : m))
-    );
-  };
+  const [selectedMatId, setSelectedMatId] = useState<string>(
+    materials.length > 0 ? materials[0].id : ""
+  );
 
   const activeMaterial = materials.find((m) => m.id === selectedMatId) || materials[0];
 
+  const handleApprove = (id: string) => {
+    approveMaterial(id);
+    triggerMascotSuccess("Material signed off & approved for classroom distribution!");
+  };
+
+  const handleReject = (id: string) => {
+    rejectMaterial(id);
+    triggerMascotError("Material marked for revision by teacher.", "material-approval-gate");
+  };
+
   return (
-    <div className="space-y-8">
+    <div className="space-y-8 animate-in fade-in duration-300">
       {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-800 pb-6">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-800/80 pb-6">
         <div>
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold bg-purple-500/10 text-purple-400 border border-purple-500/20 mb-2">
-            <ShieldCheck className="w-3.5 h-3.5" /> Step 4: Remediation Synthesis & Approval Gate
+            <ShieldCheck className="w-3.5 h-3.5" /> Stage 5 of 6: Remediation Synthesis & Approval Gate
           </div>
           <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
             Targeted Materials & Approval Gate
@@ -73,13 +65,47 @@ export default function RemedialMaterialsPage() {
         </div>
 
         <div className="flex items-center gap-3">
-          <Link href="/dashboard/compare">
-            <Button variant="primary" size="md" className="gap-2">
-              <TrendingUp className="w-4 h-4" />
-              Analyze Intervention Delta →
-            </Button>
-          </Link>
+          <Button
+            variant="primary"
+            size="md"
+            onClick={continueToNextStage}
+            className="gap-2 shadow-lg shadow-indigo-600/20"
+          >
+            <TrendingUp className="w-4 h-4 text-emerald-400" />
+            <span>Analyze Intervention Delta</span>
+            <ArrowRight className="w-4 h-4" />
+          </Button>
         </div>
+      </div>
+
+      {/* Safety Gate Advisory Banner */}
+      <div
+        id="material-approval-gate"
+        className={`p-4 rounded-2xl border flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs transition ${
+          pendingApprovalCount === 0
+            ? "bg-emerald-950/20 border-emerald-500/30 text-emerald-300"
+            : "bg-amber-950/20 border-amber-500/30 text-amber-300"
+        }`}
+      >
+        <div className="flex items-center gap-3">
+          {pendingApprovalCount === 0 ? (
+            <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0" />
+          ) : (
+            <Lock className="w-5 h-5 text-amber-400 shrink-0" />
+          )}
+          <div>
+            <strong>Teacher Sign-Off Gate: </strong>
+            {pendingApprovalCount === 0
+              ? "All remedial materials have been reviewed and approved for student distribution."
+              : `${pendingApprovalCount} worksheet draft(s) require teacher review and sign-off before student distribution.`}
+          </div>
+        </div>
+        <Badge
+          variant={pendingApprovalCount === 0 ? "emerald" : "amber"}
+          className="font-mono text-[10px] shrink-0"
+        >
+          {pendingApprovalCount === 0 ? "All Approved" : `${pendingApprovalCount} Pending Approval`}
+        </Badge>
       </div>
 
       {/* Main Grid: Cohort Selector Sidebar + Live Material Review Canvas */}
@@ -91,7 +117,7 @@ export default function RemedialMaterialsPage() {
           </div>
 
           {materials.map((m) => {
-            const isSelected = m.id === selectedMatId;
+            const isSelected = m.id === (activeMaterial ? activeMaterial.id : "");
             return (
               <div
                 key={m.id}
@@ -111,7 +137,7 @@ export default function RemedialMaterialsPage() {
                   ) : m.approvalStatus === "rejected" ? (
                     <Badge variant="rose" className="text-[10px] py-0">Rejected</Badge>
                   ) : (
-                    <Badge variant="amber" className="text-[10px] py-0">Pending Approval</Badge>
+                    <Badge variant="amber" className="text-[10px] py-0">Pending</Badge>
                   )}
                 </div>
 
@@ -138,15 +164,15 @@ export default function RemedialMaterialsPage() {
                     <div className="text-sm font-bold text-white flex items-center gap-2">
                       Status:
                       {activeMaterial.approvalStatus === "approved" ? (
-                        <span className="text-emerald-400 flex items-center gap-1 font-mono">
+                        <span className="text-emerald-400 flex items-center gap-1 font-mono text-xs">
                           <CheckCircle2 className="w-3.5 h-3.5" /> Approved for Class Distribution
                         </span>
                       ) : activeMaterial.approvalStatus === "rejected" ? (
-                        <span className="text-rose-400 flex items-center gap-1 font-mono">
+                        <span className="text-rose-400 flex items-center gap-1 font-mono text-xs">
                           <XCircle className="w-3.5 h-3.5" /> Rejected by Teacher
                         </span>
                       ) : (
-                        <span className="text-amber-400 flex items-center gap-1 font-mono">
+                        <span className="text-amber-400 flex items-center gap-1 font-mono text-xs">
                           <AlertCircle className="w-3.5 h-3.5" /> Draft Pending Teacher Review
                         </span>
                       )}
@@ -160,7 +186,7 @@ export default function RemedialMaterialsPage() {
                       variant="primary"
                       size="sm"
                       onClick={() => handleApprove(activeMaterial.id)}
-                      className="gap-1.5"
+                      className="gap-1.5 shadow-md shadow-indigo-600/30"
                     >
                       <CheckCircle2 className="w-4 h-4" />
                       Sign-Off & Approve

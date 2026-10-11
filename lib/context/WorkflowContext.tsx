@@ -1,6 +1,6 @@
 "use client";
 
-import React, { createContext, useContext, useState, useEffect } from "react";
+import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import {
   AssessmentBatch,
@@ -41,6 +41,8 @@ export type MascotState =
   | "error"
   | "success";
 
+const STORAGE_KEY = "teachsense_workflow_state_v1";
+
 interface WorkflowContextType {
   currentStageIndex: number;
   stages: WorkflowStage[];
@@ -59,6 +61,9 @@ interface WorkflowContextType {
   verifyClassification: (id: string, newTag?: string, notes?: string) => void;
   approveMaterial: (id: string) => void;
   rejectMaterial: (id: string) => void;
+  editMaterial: (id: string, updates: Partial<RemedialMaterial>) => void;
+  regenerateMaterial: (id: string) => void;
+  resetWorkflow: () => Promise<void>;
   continueToNextStage: () => void;
   goToPreviousStage: () => void;
   goToStage: (index: number) => void;
@@ -103,23 +108,71 @@ export function WorkflowProvider({ children }: { children: React.ReactNode }) {
   const [mascotMessage, setMascotMessage] = useState<string>("Sensei here! Ready to diagnose your class.");
   const [mascotTargetId, setMascotTargetId] = useState<string | null>(null);
 
-  // Initialize pipeline with fictional demo assessment
+  // Persistence Helper
+  const persistState = useCallback((
+    batch: AssessmentBatch,
+    cls: MisconceptionClassification[],
+    grps: StudentGroup[],
+    mats: RemedialMaterial[],
+    delta: DeltaAnalysisSummary | null
+  ) => {
+    try {
+      if (typeof window !== "undefined") {
+        localStorage.setItem(
+          STORAGE_KEY,
+          JSON.stringify({
+            assessmentBatch: batch,
+            classifications: cls,
+            groups: grps,
+            materials: mats,
+            deltaSummary: delta,
+            updatedAt: Date.now(),
+          })
+        );
+      }
+    } catch {
+      // Ignore quota errors in private browsing
+    }
+  }, []);
+
+  // Initialize pipeline on mount (from localStorage if available, else fresh demo)
   useEffect(() => {
     async function initPipeline() {
+      if (typeof window !== "undefined") {
+        const saved = localStorage.getItem(STORAGE_KEY);
+        if (saved) {
+          try {
+            const parsed = JSON.parse(saved);
+            if (parsed.assessmentBatch && parsed.classifications) {
+              setAssessmentBatch(parsed.assessmentBatch);
+              setClassifications(parsed.classifications);
+              setGroups(parsed.groups || []);
+              setMaterials(parsed.materials || []);
+              setDeltaSummary(parsed.deltaSummary || null);
+              return;
+            }
+          } catch {
+            // fallback to fresh demo
+          }
+        }
+      }
+
       const diag = await classifyAssessmentBatch(FICTIONAL_CLASSROOM_ASSESSMENT);
-      setClassifications(diag.classifications);
-
       const groupRes = groupStudentsByMisconceptions(diag.classifications);
-      setGroups(groupRes.groups);
-
       const mats = groupRes.groups.map(generateRemedialMaterialForGroup);
-      setMaterials(mats);
-
       const delta = analyzeInterventionDeltas(DEMO_PRE_POST_RECORDS);
+
+      setAssessmentBatch(FICTIONAL_CLASSROOM_ASSESSMENT);
+      setClassifications(diag.classifications);
+      setGroups(groupRes.groups);
+      setMaterials(mats);
       setDeltaSummary(delta);
+
+      persistState(FICTIONAL_CLASSROOM_ASSESSMENT, diag.classifications, groupRes.groups, mats, delta);
     }
+
     initPipeline();
-  }, []);
+  }, [persistState]);
 
   // Determine current stage index from route
   const currentStageIndex = Math.max(
@@ -143,96 +196,6 @@ export function WorkflowProvider({ children }: { children: React.ReactNode }) {
   if (deltaSummary !== null) completedStages.push(5);
 
   const canAdvance = currentStageIndex < WORKFLOW_STAGES.length - 1;
-
-  // Actions
-  const loadDemoClassroom = async () => {
-    setAssessmentBatch(FICTIONAL_CLASSROOM_ASSESSMENT);
-    triggerMascotThinking("Analyzing Grade 8 Fictional Classroom...");
-    const diag = await classifyAssessmentBatch(FICTIONAL_CLASSROOM_ASSESSMENT);
-    setClassifications(diag.classifications);
-
-    const groupRes = groupStudentsByMisconceptions(diag.classifications);
-    setGroups(groupRes.groups);
-
-    const mats = groupRes.groups.map(generateRemedialMaterialForGroup);
-    setMaterials(mats);
-
-    const delta = analyzeInterventionDeltas(DEMO_PRE_POST_RECORDS);
-    setDeltaSummary(delta);
-
-    triggerMascotSuccess("Demo class loaded! 4 misconception clusters detected.");
-  };
-
-  const updateAssessmentBatch = async (batch: AssessmentBatch) => {
-    setAssessmentBatch(batch);
-    triggerMascotThinking("Classifying custom student assessment...");
-    const diag = await classifyAssessmentBatch(batch);
-    setClassifications(diag.classifications);
-
-    const groupRes = groupStudentsByMisconceptions(diag.classifications);
-    setGroups(groupRes.groups);
-
-    const mats = groupRes.groups.map(generateRemedialMaterialForGroup);
-    setMaterials(mats);
-
-    triggerMascotSuccess(`Ingested ${batch.submissions.length} students across ${batch.questions.length} questions!`);
-  };
-
-  const verifyClassification = (id: string, newTag?: string, notes?: string) => {
-    setClassifications((prev) => {
-      const updated = prev.map((item) => {
-        if (item.id === id) {
-          return {
-            ...item,
-            misconceptionTag: newTag || item.misconceptionTag,
-            isUncertain: false,
-            verifiedByTeacher: true,
-            teacherOverrideNotes: notes,
-          };
-        }
-        return item;
-      });
-
-      // Update groups dynamically based on verified data
-      const newGrouping = groupStudentsByMisconceptions(updated);
-      setGroups(newGrouping.groups);
-      return updated;
-    });
-
-    triggerMascotSuccess("Teacher sign-off recorded! Cohorts updated.");
-  };
-
-  const approveMaterial = (id: string) => {
-    setMaterials((prev) =>
-      prev.map((m) => (m.id === id ? { ...m, approvalStatus: "approved" } : m))
-    );
-    triggerMascotSuccess("Remedial lesson approved! Ready for student distribution.");
-  };
-
-  const rejectMaterial = (id: string) => {
-    setMaterials((prev) =>
-      prev.map((m) => (m.id === id ? { ...m, approvalStatus: "rejected" } : m))
-    );
-    triggerMascotError("Material rejected. Teacher revision requested.", "approval-gate");
-  };
-
-  const goToStage = (index: number) => {
-    if (index >= 0 && index < WORKFLOW_STAGES.length) {
-      router.push(WORKFLOW_STAGES[index].path);
-    }
-  };
-
-  const continueToNextStage = () => {
-    if (canAdvance) {
-      goToStage(currentStageIndex + 1);
-    }
-  };
-
-  const goToPreviousStage = () => {
-    if (currentStageIndex > 0) {
-      goToStage(currentStageIndex - 1);
-    }
-  };
 
   // Mascot trigger helpers
   const triggerMascotError = (message: string, targetId?: string) => {
@@ -260,6 +223,151 @@ export function WorkflowProvider({ children }: { children: React.ReactNode }) {
     setMascotTargetId(null);
   };
 
+  // Actions
+  const loadDemoClassroom = async () => {
+    triggerMascotThinking("Analyzing Grade 8 Fictional Classroom...");
+    const diag = await classifyAssessmentBatch(FICTIONAL_CLASSROOM_ASSESSMENT);
+    const groupRes = groupStudentsByMisconceptions(diag.classifications);
+    const mats = groupRes.groups.map(generateRemedialMaterialForGroup);
+    const delta = analyzeInterventionDeltas(DEMO_PRE_POST_RECORDS);
+
+    setAssessmentBatch(FICTIONAL_CLASSROOM_ASSESSMENT);
+    setClassifications(diag.classifications);
+    setGroups(groupRes.groups);
+    setMaterials(mats);
+    setDeltaSummary(delta);
+
+    persistState(FICTIONAL_CLASSROOM_ASSESSMENT, diag.classifications, groupRes.groups, mats, delta);
+    triggerMascotSuccess("Demo class loaded! 4 misconception clusters detected.");
+  };
+
+  const updateAssessmentBatch = async (batch: AssessmentBatch) => {
+    setAssessmentBatch(batch);
+    triggerMascotThinking("Classifying custom student assessment...");
+    const diag = await classifyAssessmentBatch(batch);
+    const groupRes = groupStudentsByMisconceptions(diag.classifications);
+    const mats = groupRes.groups.map(generateRemedialMaterialForGroup);
+
+    // Compute updated synthetic delta projection based on submitted student roster
+    const scoreRecords: StudentScoreRecord[] = batch.submissions.map((sub, idx) => {
+      const cls = diag.classifications.find((c) => c.studentId === sub.studentId);
+      const pre = 35 + (idx % 4) * 10;
+      return {
+        studentId: sub.studentId,
+        studentName: sub.studentName,
+        preScore: pre,
+        postScore: Math.min(100, pre + 35 + ((idx % 3) * 5)),
+        misconceptionTag: cls?.misconceptionTag || "INVERSE_OP_SIGN_FLIP",
+      };
+    });
+    const delta = analyzeInterventionDeltas(scoreRecords);
+
+    setClassifications(diag.classifications);
+    setGroups(groupRes.groups);
+    setMaterials(mats);
+    setDeltaSummary(delta);
+
+    persistState(batch, diag.classifications, groupRes.groups, mats, delta);
+    triggerMascotSuccess(`Ingested ${batch.submissions.length} students across ${batch.questions.length} questions!`);
+  };
+
+  const verifyClassification = (id: string, newTag?: string, notes?: string) => {
+    const updated = classifications.map((item) => {
+      if (item.id === id) {
+        return {
+          ...item,
+          misconceptionTag: newTag || item.misconceptionTag,
+          isUncertain: false,
+          verifiedByTeacher: true,
+          teacherOverrideNotes: notes,
+        };
+      }
+      return item;
+    });
+
+    const newGrouping = groupStudentsByMisconceptions(updated);
+    setClassifications(updated);
+    setGroups(newGrouping.groups);
+
+    persistState(assessmentBatch, updated, newGrouping.groups, materials, deltaSummary);
+    triggerMascotSuccess("Teacher sign-off recorded! Cohorts updated.");
+  };
+
+  const approveMaterial = (id: string) => {
+    const updated = materials.map((m) =>
+      m.id === id ? { ...m, approvalStatus: "approved" as const } : m
+    );
+    setMaterials(updated);
+    persistState(assessmentBatch, classifications, groups, updated, deltaSummary);
+    triggerMascotSuccess("Remedial lesson approved! Ready for student distribution.");
+  };
+
+  const rejectMaterial = (id: string) => {
+    const updated = materials.map((m) =>
+      m.id === id ? { ...m, approvalStatus: "rejected" as const } : m
+    );
+    setMaterials(updated);
+    persistState(assessmentBatch, classifications, groups, updated, deltaSummary);
+    triggerMascotError("Material rejected. Teacher revision requested.", "material-approval-gate");
+  };
+
+  const editMaterial = (id: string, updates: Partial<RemedialMaterial>) => {
+    const updated = materials.map((m) => {
+      if (m.id === id) {
+        return {
+          ...m,
+          ...updates,
+          // Editing keeps approval state unless explicitly changed
+        };
+      }
+      return m;
+    });
+    setMaterials(updated);
+    persistState(assessmentBatch, classifications, groups, updated, deltaSummary);
+    triggerMascotSuccess("Draft worksheet revisions saved to persistent memory!");
+  };
+
+  const regenerateMaterial = (id: string) => {
+    const targetMat = materials.find((m) => m.id === id);
+    if (!targetMat) return;
+
+    const group = groups.find((g) => g.id === targetMat.groupId);
+    if (!group) return;
+
+    const fresh = generateRemedialMaterialForGroup(group);
+    const updated = materials.map((m) => (m.id === id ? fresh : m));
+    setMaterials(updated);
+    persistState(assessmentBatch, classifications, groups, updated, deltaSummary);
+    triggerMascotSuccess("Worksheet draft regenerated from pedagogical templates!");
+  };
+
+  const resetWorkflow = async () => {
+    if (typeof window !== "undefined") {
+      localStorage.removeItem(STORAGE_KEY);
+    }
+    await loadDemoClassroom();
+    router.push("/dashboard");
+    triggerMascotSuccess("Workflow reset! Loaded fresh baseline demo classroom.");
+  };
+
+  const goToStage = (index: number) => {
+    if (index >= 0 && index < WORKFLOW_STAGES.length) {
+      router.push(WORKFLOW_STAGES[index].path);
+    }
+  };
+
+  const continueToNextStage = () => {
+    if (canAdvance) {
+      goToStage(currentStageIndex + 1);
+    }
+  };
+
+  const goToPreviousStage = () => {
+    if (currentStageIndex > 0) {
+      goToStage(currentStageIndex - 1);
+    }
+  };
+
   return (
     <WorkflowContext.Provider
       value={{
@@ -279,6 +387,9 @@ export function WorkflowProvider({ children }: { children: React.ReactNode }) {
         verifyClassification,
         approveMaterial,
         rejectMaterial,
+        editMaterial,
+        regenerateMaterial,
+        resetWorkflow,
         continueToNextStage,
         goToPreviousStage,
         goToStage,

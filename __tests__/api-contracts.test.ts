@@ -13,7 +13,7 @@ function createMockRequest(url: string, body?: any): NextRequest {
   if (body) {
     reqInit.body = JSON.stringify(body);
   }
-  return new NextRequest(new URL(url, "http://localhost:3000"), reqInit);
+  return new NextRequest(new URL(url, "http://localhost:3000"), reqInit as any);
 }
 
 describe("API Route Contracts", () => {

@@ -1,21 +1,39 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import Link from "next/link";
-import { Check, Lock, ChevronRight, AlertTriangle, ShieldCheck } from "lucide-react";
+import { Check, Lock, ChevronRight, AlertTriangle, ShieldCheck, RotateCcw } from "lucide-react";
 import { useWorkflow, WORKFLOW_STAGES } from "@/lib/context/WorkflowContext";
 import clsx from "clsx";
 
 export function WorkflowStepper() {
-  const { currentStageIndex, completedStages, unresolvedReviewCount, pendingApprovalCount, goToStage } =
-    useWorkflow();
+  const {
+    currentStageIndex,
+    completedStages,
+    unresolvedReviewCount,
+    pendingApprovalCount,
+    goToStage,
+    resetWorkflow,
+  } = useWorkflow();
+
+  const [confirmReset, setConfirmReset] = useState(false);
+
+  const handleReset = async () => {
+    if (confirmReset) {
+      await resetWorkflow();
+      setConfirmReset(false);
+    } else {
+      setConfirmReset(true);
+      setTimeout(() => setConfirmReset(false), 5000);
+    }
+  };
 
   return (
     <nav
       aria-label="Classroom Diagnostic Workflow"
-      className="w-full bg-slate-900/60 border border-slate-800/80 backdrop-blur-xl rounded-2xl p-2.5 sm:p-3 shadow-lg shadow-black/40"
+      className="w-full bg-slate-900/60 border border-slate-800/80 backdrop-blur-xl rounded-2xl p-2.5 sm:p-3 shadow-lg shadow-black/40 flex flex-col md:flex-row md:items-center justify-between gap-3"
     >
-      <div className="flex items-center justify-between overflow-x-auto scrollbar-none gap-2 px-1">
+      <div className="flex items-center overflow-x-auto scrollbar-none gap-2 px-1 flex-1">
         {WORKFLOW_STAGES.map((stage, idx) => {
           const isCurrent = idx === currentStageIndex;
           const isCompleted = completedStages.includes(idx);
@@ -81,11 +99,29 @@ export function WorkflowStepper() {
               </button>
 
               {idx < WORKFLOW_STAGES.length - 1 && (
-                <ChevronRight className="w-4 h-4 text-slate-700 shrink-0 hidden md:block" />
+                <ChevronRight className="w-4 h-4 text-slate-700 shrink-0 hidden lg:block" />
               )}
             </React.Fragment>
           );
         })}
+      </div>
+
+      {/* Workflow Reset Action */}
+      <div className="shrink-0 flex items-center gap-2 pl-2 border-t md:border-t-0 md:border-l border-slate-800 pt-2 md:pt-0">
+        <button
+          type="button"
+          onClick={handleReset}
+          title="Reset diagnostic session and reload fresh fictional demo data"
+          className={clsx(
+            "px-2.5 py-1.5 rounded-lg text-[11px] font-medium transition flex items-center gap-1.5 border",
+            confirmReset
+              ? "bg-rose-950/50 border-rose-500/40 text-rose-300 animate-pulse"
+              : "bg-slate-950/40 border-slate-800 text-slate-400 hover:text-slate-200 hover:border-slate-700"
+          )}
+        >
+          <RotateCcw className="w-3 h-3" />
+          <span>{confirmReset ? "Click to Confirm Reset" : "Reset Workflow"}</span>
+        </button>
       </div>
     </nav>
   );

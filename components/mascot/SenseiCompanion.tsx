@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Sparkles, AlertCircle, CheckCircle2, Brain, X, Minimize2, Maximize2 } from "lucide-react";
+import { Sparkles, AlertCircle, CheckCircle2, Brain, X, EyeOff, Bot } from "lucide-react";
 import { useWorkflow, MascotState } from "@/lib/context/WorkflowContext";
 
 export function SenseiCompanion() {
@@ -15,23 +15,43 @@ export function SenseiCompanion() {
   } = useWorkflow();
 
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
-  const [isMinimized, setIsMinimized] = useState(false);
+  const [isDisabled, setIsDisabled] = useState(false);
+  const [reducedMotion, setReducedMotion] = useState(false);
   const [targetRect, setTargetRect] = useState<DOMRect | null>(null);
   const mascotRef = useRef<HTMLDivElement>(null);
 
-  // Track cursor position for eye vector calculation
+  // Check reduced motion preference & saved disabled state
   useEffect(() => {
+    if (typeof window !== "undefined") {
+      const mediaQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
+      setReducedMotion(mediaQuery.matches);
+      const handleMotionChange = (e: MediaQueryListEvent) => setReducedMotion(e.matches);
+      mediaQuery.addEventListener("change", handleMotionChange);
+
+      const savedDisabled = localStorage.getItem("teachsense_mascot_disabled");
+      if (savedDisabled === "true") {
+        setIsDisabled(true);
+      }
+
+      return () => mediaQuery.removeEventListener("change", handleMotionChange);
+    }
+  }, []);
+
+  // Track cursor position for eye vector calculation (if not reduced motion)
+  useEffect(() => {
+    if (reducedMotion || isDisabled) return;
+
     const handleMouseMove = (e: MouseEvent) => {
       setMousePos({ x: e.clientX, y: e.clientY });
     };
 
     window.addEventListener("mousemove", handleMouseMove, { passive: true });
     return () => window.removeEventListener("mousemove", handleMouseMove);
-  }, []);
+  }, [reducedMotion, isDisabled]);
 
   // Update target rect if an element target is specified
   useEffect(() => {
-    if (!mascotTargetId) {
+    if (!mascotTargetId || isDisabled) {
       setTargetRect(null);
       return;
     }
@@ -51,13 +71,21 @@ export function SenseiCompanion() {
       window.removeEventListener("resize", updateTarget);
       window.removeEventListener("scroll", updateTarget);
     };
-  }, [mascotTargetId]);
+  }, [mascotTargetId, isDisabled]);
+
+  const toggleDisable = () => {
+    const nextState = !isDisabled;
+    setIsDisabled(nextState);
+    if (typeof window !== "undefined") {
+      localStorage.setItem("teachsense_mascot_disabled", String(nextState));
+    }
+  };
 
   // Calculate eye pupil offset relative to mascot on screen
   let pupilOffsetX = 0;
   let pupilOffsetY = 0;
 
-  if (mascotRef.current) {
+  if (mascotRef.current && !reducedMotion) {
     const rect = mascotRef.current.getBoundingClientRect();
     const centerX = rect.left + rect.width / 2;
     const centerY = rect.top + rect.height / 2;
@@ -67,6 +95,22 @@ export function SenseiCompanion() {
     const maxOffset = 3.5;
     pupilOffsetX = (dx / distance) * Math.min(distance / 50, maxOffset);
     pupilOffsetY = (dy / distance) * Math.min(distance / 50, maxOffset);
+  }
+
+  // If disabled, show discreet floating restoration button
+  if (isDisabled) {
+    return (
+      <div className="fixed bottom-20 right-4 sm:bottom-6 sm:right-6 z-50">
+        <button
+          onClick={toggleDisable}
+          title="Enable Sensei AI Pedagogical Copilot"
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-900/90 border border-slate-800 text-xs text-slate-400 hover:text-white hover:border-indigo-500/50 transition shadow-lg backdrop-blur-md"
+        >
+          <Bot className="w-3.5 h-3.5 text-indigo-400" />
+          <span>Enable Sensei</span>
+        </button>
+      </div>
+    );
   }
 
   return (
@@ -98,7 +142,7 @@ export function SenseiCompanion() {
       >
         {/* Speech Bubble */}
         <AnimatePresence>
-          {!isMinimized && mascotMessage && (
+          {mascotMessage && (
             <motion.div
               initial={{ opacity: 0, y: 10, scale: 0.9 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
@@ -111,14 +155,25 @@ export function SenseiCompanion() {
                   <span className="w-2 h-2 rounded-full bg-indigo-400" />
                   Sensei (AI Copilot)
                 </div>
-                <button
-                  type="button"
-                  onClick={dismissMascot}
-                  className="text-slate-500 hover:text-white transition p-0.5"
-                  aria-label="Dismiss message"
-                >
-                  <X className="w-3 h-3" />
-                </button>
+                <div className="flex items-center gap-1">
+                  <button
+                    type="button"
+                    onClick={toggleDisable}
+                    title="Mute / Hide Sensei"
+                    className="text-slate-500 hover:text-slate-300 transition p-0.5"
+                    aria-label="Disable mascot"
+                  >
+                    <EyeOff className="w-3 h-3" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={dismissMascot}
+                    className="text-slate-500 hover:text-white transition p-0.5"
+                    aria-label="Dismiss message"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                </div>
               </div>
 
               <p className="text-[11px] leading-relaxed text-slate-300">
@@ -134,9 +189,8 @@ export function SenseiCompanion() {
         {/* Mascot Character Rig Container */}
         <div className="relative group">
           <motion.div
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            onClick={() => setIsMinimized(!isMinimized)}
+            whileHover={!reducedMotion ? { scale: 1.05 } : undefined}
+            whileTap={!reducedMotion ? { scale: 0.95 } : undefined}
             className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-gradient-to-tr from-slate-900 via-indigo-950/80 to-slate-900 border-2 border-indigo-500/40 p-1 shadow-2xl shadow-indigo-600/30 cursor-pointer flex items-center justify-center relative overflow-hidden backdrop-blur-md"
           >
             {/* Ambient inner glow */}
@@ -204,7 +258,7 @@ export function SenseiCompanion() {
                   <circle cx="64" cy="48" r="3.5" fill="#020617" />
                 </>
               ) : (
-                // Dynamic gaze tracking cursor
+                // Dynamic gaze tracking cursor (or centered if reduced motion)
                 <>
                   {/* Left Eye */}
                   <ellipse cx="36" cy="48" rx="6.5" ry="6.5" fill="#38bdf8" />

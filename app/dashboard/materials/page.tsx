@@ -15,6 +15,9 @@ import {
   ArrowRight,
   Check,
   Lock,
+  Edit3,
+  Save,
+  RotateCcw,
 } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
@@ -26,6 +29,8 @@ export default function RemedialMaterialsPage() {
     materials,
     approveMaterial,
     rejectMaterial,
+    editMaterial,
+    regenerateMaterial,
     pendingApprovalCount,
     continueToNextStage,
     triggerMascotSuccess,
@@ -38,6 +43,33 @@ export default function RemedialMaterialsPage() {
 
   const activeMaterial = materials.find((m) => m.id === selectedMatId) || materials[0];
 
+  // Inline editing state for active material
+  const [isEditing, setIsEditing] = useState(false);
+  const [editTitle, setEditTitle] = useState("");
+  const [editConcept, setEditConcept] = useState("");
+  const [editReframing, setEditReframing] = useState("");
+  const [editTeacherNotes, setEditTeacherNotes] = useState("");
+
+  const startEditing = () => {
+    if (!activeMaterial) return;
+    setEditTitle(activeMaterial.title);
+    setEditConcept(activeMaterial.targetConcept);
+    setEditReframing(activeMaterial.conceptualReframing);
+    setEditTeacherNotes(activeMaterial.teacherNotes || "");
+    setIsEditing(true);
+  };
+
+  const saveEdits = () => {
+    if (!activeMaterial) return;
+    editMaterial(activeMaterial.id, {
+      title: editTitle,
+      targetConcept: editConcept,
+      conceptualReframing: editReframing,
+      teacherNotes: editTeacherNotes,
+    });
+    setIsEditing(false);
+  };
+
   const handleApprove = (id: string) => {
     approveMaterial(id);
     triggerMascotSuccess("Material signed off & approved for classroom distribution!");
@@ -46,6 +78,11 @@ export default function RemedialMaterialsPage() {
   const handleReject = (id: string) => {
     rejectMaterial(id);
     triggerMascotError("Material marked for revision by teacher.", "material-approval-gate");
+  };
+
+  const handleRegenerate = (id: string) => {
+    regenerateMaterial(id);
+    setIsEditing(false);
   };
 
   return (
@@ -121,7 +158,10 @@ export default function RemedialMaterialsPage() {
             return (
               <div
                 key={m.id}
-                onClick={() => setSelectedMatId(m.id)}
+                onClick={() => {
+                  setSelectedMatId(m.id);
+                  setIsEditing(false);
+                }}
                 className={`p-4 rounded-2xl border cursor-pointer transition flex flex-col gap-2 ${
                   isSelected
                     ? "bg-slate-900 border-indigo-500/50 shadow-lg shadow-indigo-500/10"
@@ -153,7 +193,7 @@ export default function RemedialMaterialsPage() {
         {activeMaterial && (
           <div className="lg:col-span-8 space-y-6">
             <Card glow className="space-y-6">
-              {/* Approval Bar */}
+              {/* Approval & Editor Control Bar */}
               <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div className="flex items-center gap-3">
                   <div className="w-9 h-9 rounded-xl bg-purple-500/10 text-purple-400 flex items-center justify-center font-bold">
@@ -180,7 +220,50 @@ export default function RemedialMaterialsPage() {
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2">
+                <div className="flex items-center flex-wrap gap-2">
+                  {!isEditing ? (
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      onClick={startEditing}
+                      className="gap-1.5 text-xs text-slate-300 hover:text-white"
+                    >
+                      <Edit3 className="w-3.5 h-3.5" />
+                      Edit Draft
+                    </Button>
+                  ) : (
+                    <>
+                      <Button
+                        variant="primary"
+                        size="sm"
+                        onClick={saveEdits}
+                        className="gap-1.5 text-xs shadow-md shadow-indigo-600/30"
+                      >
+                        <Save className="w-3.5 h-3.5" />
+                        Save Changes
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setIsEditing(false)}
+                        className="text-xs"
+                      >
+                        Cancel
+                      </Button>
+                    </>
+                  )}
+
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleRegenerate(activeMaterial.id)}
+                    title="Regenerate draft from pedagogical rules"
+                    className="gap-1.5 text-xs text-slate-400 hover:text-slate-200"
+                  >
+                    <RotateCcw className="w-3 h-3" />
+                    Regenerate
+                  </Button>
+
                   {activeMaterial.approvalStatus !== "approved" && (
                     <Button
                       variant="primary"
@@ -209,10 +292,29 @@ export default function RemedialMaterialsPage() {
               {/* Material Header */}
               <div className="space-y-2 border-b border-slate-800 pb-4">
                 <div className="flex items-center justify-between text-xs">
-                  <span className="text-indigo-400 font-mono font-medium">{activeMaterial.targetConcept}</span>
+                  {isEditing ? (
+                    <input
+                      type="text"
+                      value={editConcept}
+                      onChange={(e) => setEditConcept(e.target.value)}
+                      className="bg-slate-900 border border-slate-800 rounded px-2.5 py-1 text-indigo-400 font-mono text-xs w-2/3"
+                    />
+                  ) : (
+                    <span className="text-indigo-400 font-mono font-medium">{activeMaterial.targetConcept}</span>
+                  )}
                   <span className="text-slate-400 font-mono">Doc ID: {activeMaterial.id}</span>
                 </div>
-                <h2 className="text-xl font-extrabold text-white">{activeMaterial.title}</h2>
+
+                {isEditing ? (
+                  <input
+                    type="text"
+                    value={editTitle}
+                    onChange={(e) => setEditTitle(e.target.value)}
+                    className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-1.5 text-lg font-extrabold text-white"
+                  />
+                ) : (
+                  <h2 className="text-xl font-extrabold text-white">{activeMaterial.title}</h2>
+                )}
               </div>
 
               {/* Conceptual Reframing */}
@@ -220,9 +322,18 @@ export default function RemedialMaterialsPage() {
                 <h3 className="text-xs uppercase font-bold text-slate-400 tracking-wider">
                   1. Conceptual Reframing
                 </h3>
-                <div className="p-4 rounded-xl bg-slate-950/70 border border-slate-800 text-xs text-slate-200 leading-relaxed">
-                  {activeMaterial.conceptualReframing}
-                </div>
+                {isEditing ? (
+                  <textarea
+                    rows={4}
+                    value={editReframing}
+                    onChange={(e) => setEditReframing(e.target.value)}
+                    className="w-full bg-slate-900 border border-slate-800 rounded-xl p-3 text-xs text-slate-200 leading-relaxed focus:outline-none focus:border-indigo-500"
+                  />
+                ) : (
+                  <div className="p-4 rounded-xl bg-slate-950/70 border border-slate-800 text-xs text-slate-200 leading-relaxed">
+                    {activeMaterial.conceptualReframing}
+                  </div>
+                )}
               </div>
 
               {/* Counter-Examples Comparison */}
@@ -294,6 +405,25 @@ export default function RemedialMaterialsPage() {
                 <div className="text-[11px] text-slate-400 font-sans italic">
                   🔍 <strong>Distractor Note:</strong> {activeMaterial.exitTicketQuestion.diagnosticDistractorNote}
                 </div>
+              </div>
+
+              {/* Teacher Strategy Notes */}
+              <div className="space-y-1.5 text-xs border-t border-slate-800/80 pt-4">
+                <h3 className="text-xs uppercase font-bold text-slate-400 tracking-wider">
+                  Teacher Instructional Notes
+                </h3>
+                {isEditing ? (
+                  <textarea
+                    rows={2}
+                    value={editTeacherNotes}
+                    onChange={(e) => setEditTeacherNotes(e.target.value)}
+                    className="w-full bg-slate-900 border border-slate-800 rounded-xl p-3 text-xs text-slate-200 focus:outline-none focus:border-indigo-500"
+                  />
+                ) : (
+                  <p className="text-slate-300 italic bg-slate-950/50 p-3 rounded-xl border border-slate-800">
+                    {activeMaterial.teacherNotes || "Review concepts with students in targeted small group."}
+                  </p>
+                )}
               </div>
             </Card>
           </div>

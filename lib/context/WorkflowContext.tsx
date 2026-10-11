@@ -32,14 +32,15 @@ export const WORKFLOW_STAGES: WorkflowStage[] = [
   { id: "compare", name: "Efficacy Delta", shortLabel: "Compare", path: "/dashboard/compare", description: "Pre/post intervention statistical learning gain" },
 ];
 
+import { mascotBus, MascotStateType, MascotEvent } from "@/lib/mascot/mascot-events";
+
 export type MascotState =
-  | "idle"
+  | MascotStateType
   | "cursor_tracking"
   | "noticing"
   | "pointing"
   | "thinking"
-  | "error"
-  | "success";
+  | "error";
 
 const STORAGE_KEY = "teachsense_workflow_state_v1";
 
@@ -76,6 +77,7 @@ interface WorkflowContextType {
   triggerMascotSuccess: (message: string) => void;
   triggerMascotThinking: (message: string) => void;
   dismissMascot: () => void;
+  emitMascotEvent: (event: MascotEvent) => void;
 }
 
 const WorkflowContext = createContext<WorkflowContextType | undefined>(undefined);
@@ -197,30 +199,55 @@ export function WorkflowProvider({ children }: { children: React.ReactNode }) {
 
   const canAdvance = currentStageIndex < WORKFLOW_STAGES.length - 1;
 
-  // Mascot trigger helpers
+  // Mascot event bus subscription
+  useEffect(() => {
+    const unsubscribe = mascotBus.subscribe((evt) => {
+      if (evt.state) setMascotState(evt.state);
+      if (evt.message) setMascotMessage(evt.message);
+      if (evt.targetId !== undefined) setMascotTargetId(evt.targetId || null);
+    });
+    return unsubscribe;
+  }, []);
+
   const triggerMascotError = (message: string, targetId?: string) => {
-    setMascotState("error");
-    setMascotMessage(message);
-    setMascotTargetId(targetId || null);
+    mascotBus.emit({
+      type: "field:error",
+      message,
+      targetId,
+      state: "warning",
+      priority: 10,
+    });
   };
 
   const triggerMascotSuccess = (message: string) => {
-    setMascotState("success");
-    setMascotMessage(message);
+    mascotBus.emit({
+      type: "upload:success",
+      message,
+      state: "success",
+      priority: 8,
+    });
     setTimeout(() => {
       setMascotState("idle");
     }, 4500);
   };
 
   const triggerMascotThinking = (message: string) => {
-    setMascotState("thinking");
-    setMascotMessage(message);
+    mascotBus.emit({
+      type: "navigation:change",
+      message,
+      state: "loading",
+      priority: 5,
+    });
   };
 
   const dismissMascot = () => {
     setMascotState("idle");
     setMascotMessage("");
     setMascotTargetId(null);
+  };
+
+  const emitMascotEvent = (event: MascotEvent) => {
+    mascotBus.emit(event);
   };
 
   // Actions
@@ -401,6 +428,7 @@ export function WorkflowProvider({ children }: { children: React.ReactNode }) {
         triggerMascotSuccess,
         triggerMascotThinking,
         dismissMascot,
+        emitMascotEvent,
       }}
     >
       {children}

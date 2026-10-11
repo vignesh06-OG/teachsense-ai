@@ -27,6 +27,7 @@ export function ReviewQueueCard({ item, onVerify }: ReviewQueueCardProps) {
 
   return (
     <div
+      id={`review-queue-card-${item.id}`}
       className={`rounded-2xl border p-5 transition duration-200 ${
         isVerified
           ? "border-emerald-500/40 bg-emerald-950/15"

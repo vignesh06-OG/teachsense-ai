@@ -18,6 +18,7 @@ import {
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
+import { CountUp, SectionReveal } from "@/components/motion/AnimatedText";
 import { MisconceptionDistributionChart } from "@/components/charts/MisconceptionDistributionChart";
 import { useWorkflow } from "@/lib/context/WorkflowContext";
 
@@ -80,64 +81,79 @@ export default function DashboardOverviewPage() {
 
       {/* KPI Stats Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-        <Card glow className="space-y-2 surface-elevation-1 hover-lift">
-          <div className="flex items-center justify-between">
-            <span className="text-xs uppercase font-bold text-slate-400 tracking-wider">Students In Cohort</span>
-            <div className="w-8 h-8 rounded-lg bg-indigo-500/10 text-indigo-400 flex items-center justify-center">
-              <Users className="w-4 h-4" />
+        <SectionReveal delay={0}>
+          <Card glow className="space-y-2 surface-elevation-1 hover-lift h-full">
+            <div className="flex items-center justify-between">
+              <span className="text-xs uppercase font-bold text-slate-400 tracking-wider">Students In Cohort</span>
+              <div className="w-8 h-8 rounded-lg bg-indigo-500/10 text-indigo-400 flex items-center justify-center">
+                <Users className="w-4 h-4" />
+              </div>
             </div>
-          </div>
-          <div className="text-3xl font-extrabold text-white font-mono">
-            {assessmentBatch.submissions.length}
-          </div>
-          <div className="text-[11px] text-slate-400 flex items-center gap-1.5">
-            <Badge variant="emerald" className="text-[10px] py-0">Synthetic</Badge>
-            Pure zero-PII student roster
-          </div>
-        </Card>
+            <div className="text-3xl font-extrabold text-white font-mono">
+              <CountUp value={assessmentBatch.submissions.length} />
+            </div>
+            <div className="text-[11px] text-slate-400 flex items-center gap-1.5">
+              <Badge variant="emerald" className="text-[10px] py-0">Synthetic</Badge>
+              Pure zero-PII student roster
+            </div>
+          </Card>
+        </SectionReveal>
 
-        <Card glow className="space-y-2 surface-elevation-1 hover-lift">
-          <div className="flex items-center justify-between">
-            <span className="text-xs uppercase font-bold text-slate-400 tracking-wider">Misconception Clusters</span>
-            <div className="w-8 h-8 rounded-lg bg-cyan-500/10 text-cyan-400 flex items-center justify-center">
-              <Brain className="w-4 h-4" />
+        <SectionReveal delay={0.05}>
+          <Card glow className="space-y-2 surface-elevation-1 hover-lift h-full">
+            <div className="flex items-center justify-between">
+              <span className="text-xs uppercase font-bold text-slate-400 tracking-wider">Misconception Clusters</span>
+              <div className="w-8 h-8 rounded-lg bg-cyan-500/10 text-cyan-400 flex items-center justify-center">
+                <Brain className="w-4 h-4" />
+              </div>
             </div>
-          </div>
-          <div className="text-3xl font-extrabold text-white font-mono">{groups.length}</div>
-          <div className="text-[11px] text-slate-400">
-            Top: <strong className="text-slate-200">Inverse Sign Flip</strong>
-          </div>
-        </Card>
+            <div className="text-3xl font-extrabold text-white font-mono">
+              <CountUp value={groups.length} />
+            </div>
+            <div className="text-[11px] text-slate-400">
+              Top: <strong className="text-slate-200">Inverse Sign Flip</strong>
+            </div>
+          </Card>
+        </SectionReveal>
 
-        <Card glow className="space-y-2 surface-elevation-1 hover-lift">
-          <div className="flex items-center justify-between">
-            <span className="text-xs uppercase font-bold text-slate-400 tracking-wider">Review Queue</span>
-            <div className="w-8 h-8 rounded-lg bg-amber-500/10 text-amber-400 flex items-center justify-center">
-              <AlertTriangle className="w-4 h-4" />
+        <SectionReveal delay={0.1}>
+          <Card glow className="space-y-2 surface-elevation-1 hover-lift h-full">
+            <div className="flex items-center justify-between">
+              <span className="text-xs uppercase font-bold text-slate-400 tracking-wider">Review Queue</span>
+              <div className="w-8 h-8 rounded-lg bg-amber-500/10 text-amber-400 flex items-center justify-center">
+                <AlertTriangle className="w-4 h-4" />
+              </div>
             </div>
-          </div>
-          <div className="text-3xl font-extrabold text-amber-300 font-mono">
-            {unresolvedReviewCount}
-          </div>
-          <div className="text-[11px] text-amber-400/80">
-            Confidence &lt; 85% requires teacher sign-off
-          </div>
-        </Card>
+            <div className="text-3xl font-extrabold text-amber-300 font-mono">
+              <CountUp value={unresolvedReviewCount} />
+            </div>
+            <div className="text-[11px] text-amber-400/80">
+              Confidence &lt; 85% requires teacher sign-off
+            </div>
+          </Card>
+        </SectionReveal>
 
-        <Card glow className="space-y-2 surface-elevation-1 hover-lift">
-          <div className="flex items-center justify-between">
-            <span className="text-xs uppercase font-bold text-slate-400 tracking-wider">Average Learning Gain</span>
-            <div className="w-8 h-8 rounded-lg bg-emerald-500/10 text-emerald-400 flex items-center justify-center">
-              <TrendingUp className="w-4 h-4" />
+        <SectionReveal delay={0.15}>
+          <Card glow className="space-y-2 surface-elevation-1 hover-lift h-full">
+            <div className="flex items-center justify-between">
+              <span className="text-xs uppercase font-bold text-slate-400 tracking-wider">Average Learning Gain</span>
+              <div className="w-8 h-8 rounded-lg bg-emerald-500/10 text-emerald-400 flex items-center justify-center">
+                <TrendingUp className="w-4 h-4" />
+              </div>
             </div>
-          </div>
-          <div className="text-3xl font-extrabold text-emerald-400 font-mono">
-            {deltaSummary ? `+${(deltaSummary.postAverage - deltaSummary.preAverage).toFixed(1)}%` : "+42.5%"}
-          </div>
-          <div className="text-[11px] text-slate-400">
-            Normalized Gain <strong className="text-emerald-300">g = {deltaSummary?.averageNormalizedGain ?? 0.74}</strong>
-          </div>
-        </Card>
+            <div className="text-3xl font-extrabold text-emerald-400 font-mono">
+              <CountUp
+                value={deltaSummary ? deltaSummary.postAverage - deltaSummary.preAverage : 42.5}
+                prefix="+"
+                suffix="%"
+                decimals={1}
+              />
+            </div>
+            <div className="text-[11px] text-slate-400">
+              Normalized Gain <strong className="text-emerald-300">g = {deltaSummary?.averageNormalizedGain ?? 0.74}</strong>
+            </div>
+          </Card>
+        </SectionReveal>
       </div>
 
       {/* Main Grid: Chart + Workflow Roadmap */}

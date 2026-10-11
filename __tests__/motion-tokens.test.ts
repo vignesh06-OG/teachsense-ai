@@ -6,6 +6,8 @@ import {
   fadeInVariants,
   staggerContainerVariants,
   scaleCardVariants,
+  routeTransitionVariants,
+  heroEntranceVariants,
 } from "@/lib/motion/motion-tokens";
 
 describe("Motion Tokens & Animation Config", () => {
@@ -25,6 +27,7 @@ describe("Motion Tokens & Animation Config", () => {
     expect(SPRING_CONFIGS.snappy).toHaveProperty("type", "spring");
     expect(SPRING_CONFIGS.gentle).toHaveProperty("stiffness");
     expect(SPRING_CONFIGS.bouncy).toHaveProperty("damping");
+    expect(SPRING_CONFIGS.mascot).toHaveProperty("stiffness");
   });
 
   it("exports properly structured Framer Motion variants", () => {
@@ -34,5 +37,19 @@ describe("Motion Tokens & Animation Config", () => {
 
     expect(staggerContainerVariants).toHaveProperty("visible");
     expect(scaleCardVariants).toHaveProperty("hover");
+    expect(routeTransitionVariants).toHaveProperty("initial");
+    expect(routeTransitionVariants).toHaveProperty("animate");
+    expect(routeTransitionVariants).toHaveProperty("exit");
+  });
+
+  it("evaluates heroEntranceVariants dynamic function correctly", () => {
+    expect(heroEntranceVariants).toHaveProperty("hidden");
+    if (typeof heroEntranceVariants.visible === "function") {
+      const visibleFn = heroEntranceVariants.visible as any;
+      const result0 = visibleFn(0);
+      expect(result0).toHaveProperty("opacity", 1);
+      const result2 = visibleFn(2);
+      expect(result2).toHaveProperty("opacity", 1);
+    }
   });
 });

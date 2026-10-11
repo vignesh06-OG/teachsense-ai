@@ -19,6 +19,7 @@ export const SPRING_CONFIGS = {
   snappy: { type: "spring", stiffness: 450, damping: 30 } as Transition,
   gentle: { type: "spring", stiffness: 220, damping: 25 } as Transition,
   bouncy: { type: "spring", stiffness: 350, damping: 18 } as Transition,
+  mascot: { type: "spring", stiffness: 180, damping: 22 } as Transition,
 };
 
 export const fadeInVariants: Variants = {
@@ -58,4 +59,43 @@ export const scaleCardVariants: Variants = {
     y: -3,
     transition: { duration: 0.2, ease: MOTION_EASINGS.smoothOut },
   },
+};
+
+export const routeTransitionVariants: Variants = {
+  initial: {
+    opacity: 0,
+    y: 10,
+    scale: 0.995,
+  },
+  animate: {
+    opacity: 1,
+    y: 0,
+    scale: 1,
+    transition: {
+      duration: 0.3,
+      ease: MOTION_EASINGS.smoothOut,
+    },
+  },
+  exit: {
+    opacity: 0,
+    y: -8,
+    scale: 0.995,
+    transition: {
+      duration: 0.2,
+      ease: MOTION_EASINGS.smoothOut,
+    },
+  },
+};
+
+export const heroEntranceVariants: Variants = {
+  hidden: { opacity: 0, y: 20 },
+  visible: (custom: number = 0) => ({
+    opacity: 1,
+    y: 0,
+    transition: {
+      delay: custom * 0.12,
+      duration: 0.5,
+      ease: MOTION_EASINGS.smoothOut,
+    },
+  }),
 };

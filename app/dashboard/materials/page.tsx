@@ -85,6 +85,17 @@ export default function RemedialMaterialsPage() {
     setIsEditing(false);
   };
 
+  const handleAdvance = () => {
+    if (pendingApprovalCount > 0) {
+      triggerMascotError(
+        `Teacher agency gate: ${pendingApprovalCount} lesson draft(s) require approval or revision before distribution.`,
+        "material-approval-gate"
+      );
+      return;
+    }
+    continueToNextStage();
+  };
+
   return (
     <div className="space-y-8 animate-in fade-in duration-300">
       {/* Header */}
@@ -105,7 +116,7 @@ export default function RemedialMaterialsPage() {
           <Button
             variant="primary"
             size="md"
-            onClick={continueToNextStage}
+            onClick={handleAdvance}
             className="gap-2 shadow-lg shadow-indigo-600/20"
           >
             <TrendingUp className="w-4 h-4 text-emerald-400" />

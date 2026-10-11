@@ -23,6 +23,7 @@ export function WorkflowActionBar({
     goToPreviousStage,
     unresolvedReviewCount,
     pendingApprovalCount,
+    triggerMascotError,
   } = useWorkflow();
 
   const currentStage = WORKFLOW_STAGES[currentStageIndex];
@@ -32,6 +33,11 @@ export function WorkflowActionBar({
   const handleNext = () => {
     if (onNextOverride) {
       onNextOverride();
+    } else if (currentStage.id === "materials" && pendingApprovalCount > 0) {
+      triggerMascotError(
+        `Teacher agency gate: ${pendingApprovalCount} lesson draft(s) require approval before proceeding!`,
+        "material-approval-gate"
+      );
     } else {
       continueToNextStage();
     }
